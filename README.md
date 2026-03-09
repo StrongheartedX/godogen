@@ -44,6 +44,10 @@ A single generation run can take several hours. Running on a cloud VM keeps your
 
 The default `CLAUDE.md` (`teleforge.md`) is set up for [Teleforge](https://github.com/htdt/teleforge) — a lightweight Telegram bridge that lets you monitor progress and send messages to the running session from your phone. If you don't use Teleforge, pass your own `CLAUDE.md` to `publish.sh` or edit the generated one after publishing.
 
+## Is Claude Code the only option?
+
+The skills were tested across different setups. Claude Code with Opus 4.6 delivers the best outcome. Sonnet 4.6 works but requires more guidance from the user. Codex and Gemini CLI didn't deliver clean results — I decided to focus on Claude Code instead. [OpenCode](https://opencode.ai/) was quite nice and porting the skills is straightforward — I'd recommend it if you're looking for an alternative.
+
 ## Roadmap
 
 - Migrate image generation to `grok-imagine-image` (cheaper per image)
