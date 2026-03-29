@@ -11,12 +11,14 @@ Output: JSON to stdout. Progress to stderr.
 
 import argparse
 import base64
+import io
 import json
 import sys
 from pathlib import Path
 
 import requests
 import xai_sdk
+from PIL import Image
 
 from tripo3d import MODEL_V3, image_to_glb
 
@@ -145,7 +147,9 @@ def cmd_image(args):
             aspect_ratio=args.aspect_ratio,
             resolution=args.size.lower(),
         )
-        output.write_bytes(resp.image)
+        # xAI returns JPEG; convert to real PNG
+        img = Image.open(io.BytesIO(resp.image))
+        img.save(output, format="PNG")
     except Exception as e:
         result_json(False, error=str(e))
         sys.exit(1)
