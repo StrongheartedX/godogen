@@ -121,14 +121,63 @@ python3 ${CLAUDE_SKILL_DIR}/tools/rembg_matting.py \
 
 Repeat from step 2 using the same reference image. Each new animation costs 7¢ (Gemini pose) + video duration × 5¢.
 
-### Convert image to GLB (40-50 cents)
+### Convert image to static GLB (30-60 cents)
 
 ```bash
 python3 ${CLAUDE_SKILL_DIR}/tools/asset_gen.py glb \
   --image assets/img/car.png -o assets/glb/car.glb
 ```
 
-`--quality`: `default` (P1, 50¢) or `high` (v3.1 + HD textures, 40¢)
+`--quality`: `default` (30¢ — v3.1, std geometry/texture, 30k face cap, PBR) or `hd` (60¢ — v3.1, detailed geometry + HD texture, no face cap)
+`--no-pbr`: disable PBR. Only use if a PBR output looks visibly wrong (rare — on v3.1 it's usually correct).
+`--face-limit N` (default `30000`, sane range 10k-50k, ignored by `--quality hd`). There is no separate lowpoly mode — just shrink the cap.
+
+Writes a `<output>.glb.tripo.json` sidecar with the `image_to_model` task id — consumed by `rig` only.
+
+### Rig a biped character (preset cost + 25¢)
+
+**Biped only.** The rigger is `v1.0-20240301` (server default — we leave `model_version` unset). It is the only rig tuned for humanoid skeletons; quadrupeds, serpents, etc. must use plain `glb` — no retarget option.
+
+```bash
+python3 ${CLAUDE_SKILL_DIR}/tools/asset_gen.py rig \
+  --image assets/img/knight_ref.png -o assets/glb/knight_rigged.glb
+```
+
+Runs `image_to_model → prerigcheck → animate_rig`. Aborts with a clear error if prerigcheck says the mesh is not biped. Same `--quality` / `--no-pbr` flags as `glb`. Writes a sidecar holding both task ids.
+
+### Retarget animation (10¢ per clip)
+
+```bash
+python3 ${CLAUDE_SKILL_DIR}/tools/asset_gen.py retarget \
+  --rigged assets/glb/knight_rigged.glb \
+  --animation preset:biped:walk \
+  -o assets/glb/knight_walk.glb
+```
+
+Reads the rig task id from the sidecar next to `--rigged` and submits `animate_retarget`. Each call is a separate 10¢ task — for a character with walk + idle + attack, run `retarget` three times pointing at the same rigged GLB. **No re-rigging, no re-generation.** Delete the sidecar to force a cold start.
+
+The baked clip shows up in Godot's `AnimationPlayer` as `NlaTrack` (Tripo's Blender export name), not the preset name you requested.
+
+#### Biped presets (full list from tripo3d docs)
+
+```
+afraid agree angry_01 angry_02 angry_03 basketball_shot bow box_01 box_02
+box_03 cast_a_spell cheer chop clap climb complain_01 complain_02
+cross_body_crunch crossover_dribble cry dance_01 dance_02 dance_03 dance_04
+dance_05 dance_06 defeat_02 defeat_03 depressed dig dive dribble fall fire
+flee_01 flee_02 flip fold_arms football_catch football_save football_pass
+freaky frightened front_kick_01 front_kick_02 frustrated_01 frustrated_02
+golf greet_01 greet_02 greet_03 greet_04 heart_pose hit_to_body_01
+hit_to_body_02 hit_to_head hit_to_side hit_to_stomach hug hurt idle
+jump_down jump jump_rope_01 jump_rope_02 laugh_01 laugh_02 lift_heavy
+look_around make_a_call_01 make_a_call_02 pitch_baseball play_mobile_game
+play_video_game press-up run_upstairs run scared_01 scared_02 scratch shoot
+shovel sing_01 sing_02 sing_03 sing_04 sit slash sob standing_relax surf
+swagger swim turn victory_celebration volleyball wait walk warm_up
+wave_goodbye_01 wave_goodbye_02
+```
+
+Each is prefixed `preset:biped:` when passed to `--animation` (e.g. `preset:biped:dance_03`).
 
 ### Set budget
 
@@ -159,11 +208,13 @@ result=$(python3 ${CLAUDE_SKILL_DIR}/tools/asset_gen.py image --prompt "..." -o 
 | Image | --model gemini --size 1K | 7 cents | References, characters, 3D refs |
 | Image | --model gemini --size 2K | 10 cents | Backgrounds, title screens |
 | Image | --model gemini --size 4K | 15 cents | Large maps, panoramas |
-| GLB | default | 50 cents | P1 model, fast, game-optimized topology |
-| GLB | high | 40 cents | v3.1, HD textures |
+| GLB | default | 30 cents | v3.1, 30k face cap, standard texture + PBR |
+| GLB | hd | 60 cents | v3.1, detailed geometry + HD texture + PBR |
+| Rig | biped | 25 cents | one-time per character, on top of the GLB cost |
+| Retarget | per animation | 10 cents | each clip is a separate task; reuses the rigged task id |
 | Video | --duration N | 5¢ × N seconds | Pose frame as starting image |
 
-A full 3D asset (Gemini 1K image + GLB) costs 47 cents at high quality. A texture (Grok) is 2 cents. A background is 2¢ (Grok, simple) or 10¢ (Gemini 2K, precise layout). A 3-second animation costs 24 cents (7¢ Gemini ref + 7¢ Gemini pose + 10¢ video); additional animations from the same ref cost 7¢ pose + video.
+A full 3D asset (Gemini 1K image + default GLB) costs 37¢. A rigged biped character with walk/idle/attack is 37¢ + 25¢ rig + 3 × 10¢ retarget = 92¢. A texture (Grok) is 2¢. A background is 2¢ (Grok, simple) or 10¢ (Gemini 2K, precise layout). A 3-second 2D sprite animation costs 24¢ (7¢ Gemini ref + 7¢ pose + 10¢ video); additional animations from the same ref cost 7¢ pose + video.
 
 ## Image Resolution
 
@@ -249,7 +300,7 @@ python3 ${CLAUDE_SKILL_DIR}/tools/grid_slice.py path_grid.png \
 
 Then rembg each item if transparency is needed. Supports any grid: `2x2`, `3x3`, `2x4`, etc.
 
-### 3D model reference (7c Gemini 1K) + GLB (40-50c)
+### 3D model reference (7c Gemini 1K) + GLB (30-60c)
 
 Use Gemini — clean composition and precise prompt following are critical for 3D conversion.
 
