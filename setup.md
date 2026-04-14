@@ -1,5 +1,7 @@
 # Workstation Setup
 
+Shared workstation setup for both source trees in this repo.
+
 ## .NET 9 SDK
 
 Godot 4.5+ requires .NET 9.
@@ -65,8 +67,17 @@ Requires Python 3.10+.
 
 ```bash
 python3 --version
-pip install -r skills/godogen/tools/requirements.txt
+pip install -r claude/skills/godogen/tools/requirements.txt
+# or
+pip install -r codex/skills/godogen/tools/requirements.txt
 ```
+
+The two requirements files should stay aligned. Install either one in the source repo.
+
+In a published game repo, the same file lives at:
+
+- `.claude/skills/godogen/tools/requirements.txt` for Claude Code
+- `.agents/skills/godogen/tools/requirements.txt` for Codex
 
 ## Godot (.NET edition)
 
@@ -192,6 +203,16 @@ Set in environment:
 - `GOOGLE_API_KEY` — Gemini image generation (references, characters, precise work)
 - `XAI_API_KEY` — xAI Grok image/video generation (textures, simple objects)
 - `TRIPO3D_API_KEY` — image-to-3D conversion (3D games only)
+
+## Notifications (optional)
+
+[tg-push](https://github.com/htdt/tg-push) is a single-shot CLI that sends text plus an optional image or video to Telegram. The agent uses it to report progress, QA verdicts, and the final video — especially useful when a run executes on a remote server.
+
+```bash
+pipx install tg-push
+```
+
+Set `TG_BOT_TOKEN` (from [@BotFather](https://t.me/BotFather)) and `TG_CHAT_ID` in the environment.
 
 ## Verify All
 
