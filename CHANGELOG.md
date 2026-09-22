@@ -1,5 +1,8 @@
 # Changelog
 
+**2026-09-22 — macOS Godot headless**
+- On macOS, `godot` on `PATH` is a wrapper script around the `.app` binary, so Godot finds `GodotSharp/` inside the bundle. The Godot guide names the macOS trap where a fatal error hangs in a modal instead of exiting (run `godot` under `timeout`, exit 124 = failure) and says capture runs windowed there (Metal, no `xvfb`).
+
 **2026-09-22 — Local image generation, current image models**
 - Added local image generation: when `qwen-image` is on PATH, `asset-gen` runs Qwen-Image-2.1 on the machine's GPU for free, so simple images (textures, props, icons, UI, backgrounds, in-image text) go there before the paid APIs; `qwen-image rgba` outputs real alpha with no matting. `setup.md` carries a brief for building the command on each machine.
 - Image generation uses Gemini 3.1 Flash Image and Grok Imagine Image 2.0 (medium quality) as equals — a side-by-side on a 3D-ready character and a dense composition came out even. `asset_gen.py` uses whichever key is set, Gemini by default for speed (~10 s vs 1–2 min); quality-critical assets are generated on both and the better kept.

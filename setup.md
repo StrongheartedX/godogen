@@ -111,21 +111,26 @@ sudo mv Godot_v${VERSION}-stable_mono_linux_x86_64/GodotSharp /usr/local/bin/God
 
 ```bash
 brew install --cask godot-mono
-sudo ln -sf /Applications/Godot_mono.app/Contents/MacOS/Godot /usr/local/bin/godot
+sudo rm -f /usr/local/bin/godot   # clear any symlink first: tee would write through it onto the Godot binary
+printf '#!/bin/sh\nexec /Applications/Godot_mono.app/Contents/MacOS/Godot "$@"\n' | sudo tee /usr/local/bin/godot >/dev/null
+sudo chmod +x /usr/local/bin/godot
 ```
+
+`godot` must be a wrapper script, not a symlink. Godot resolves `GodotSharp/` (in the bundle's `Contents/Resources/`) from the path it was invoked as, so through a symlink it looks in `/usr/local/bin/` and fails — as a silent hang, since macOS shows fatal errors in a modal that `--headless` can't dismiss. Skip the plain `godot` cask: its `godot` command runs the build without C#.
 
 ### Verify
 
 ```bash
-dotnet --version                 # 9.0.x
-godot --version                  # 4.x.x.stable.mono
-godot --headless --quit          # may show harmless RID warnings
+dotnet --version                    # 9.0.x
+godot --version                     # 4.x.x.stable.mono
+timeout 60 godot --headless --quit  # may show harmless RID warnings
 ```
 
-If `godot --headless --quit` crashes with assembly errors, check that `GodotSharp/` is next to the binary:
+Assembly errors (Linux) or a timeout with output ending at `.NET: Initializing module...` (macOS) mean `godot` can't find `GodotSharp/`:
 
 ```bash
-ls "$(dirname "$(which godot)")"/GodotSharp/
+ls "$(dirname "$(which godot)")"/GodotSharp/   # Linux: must sit next to the binary
+head -2 "$(which godot)"                       # macOS: must be the wrapper script above
 ```
 
 ## Character Animation (Optional)
