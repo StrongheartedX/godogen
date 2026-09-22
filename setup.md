@@ -39,7 +39,7 @@ rustc --version
 
 ## Node.js And Browser
 
-Babylon.js projects require Node.js 22.12+ and npm:
+The Tripo CLI needs Node.js 20+ for every engine (`npm install -g tripo-cli`); Babylon.js projects need 22.12+:
 
 ```bash
 node --version
@@ -128,13 +128,49 @@ If `godot --headless --quit` crashes with assembly errors, check that `GodotShar
 ls "$(dirname "$(which godot)")"/GodotSharp/
 ```
 
+## Character Animation (Optional)
+
+Custom humanoid animation (the asset-gen skill's `motion.md`) additionally requires:
+
+- NVIDIA GPU with a working CUDA driver. Modest is fine: the text encoder runs on CPU (needs ≥20 GB free RAM), diffusion peaks ~2.5 GB VRAM; ~35 GB disk
+- `cmake` — the Kimodo install builds a compiled extension
+
+### Dependency layout
+
+The animation stack is machine-level: one copy per workstation, shared by every game project. It lives under a single directory, with these exact names:
+
+```
+$KIMODO_HOME/
+├── kimodo-practical/   # the animation lib — reference clone; projects clone their workspace from it
+├── kimodo/             # upstream NVIDIA Kimodo checkout, editable-installed into kimenv/
+├── kimenv/             # the pipeline venv — run the lib's python tools with kimenv/bin/python
+└── text_encoders/      # local Llama-3 encoder mirror (built by the lib's setup_text_encoder.py)
+```
+
+Model weights — the ~3 GB Kimodo checkpoint and the 16 GB Llama base — live in `~/.cache/huggingface`; `text_encoders/` is symlinks into it. Install steps for all four entries: `kimodo-practical/KIMODO.md` §1, run from `$KIMODO_HOME`. The venv is not relocatable (absolute shebangs, editable install) — pick the location once, or rebuild the venv after a move.
+
+Export in `~/.bashrc` (and `~/.zshrc`):
+
+```bash
+export KIMODO_HOME="$HOME/Documents/kimodo-home"
+```
+
+A set `KIMODO_HOME` is the signal agents key on: the stack is installed and complete under it — reuse it, never re-fetch or search the filesystem. It is the only animation env var; upstream Kimodo's own variables derive from the fixed layout and are set per command (`TEXT_ENCODERS_DIR="$KIMODO_HOME/text_encoders"`, `TEXT_ENCODER_DEVICE=cpu`), as `motion.md` and the lib's docs instruct.
+
+Verify:
+
+```bash
+"$KIMODO_HOME/kimenv/bin/python" -c "import kimodo, torch; print(torch.cuda.is_available())"  # True
+ls "$KIMODO_HOME/text_encoders/llama3-8b-instruct-base/config.json"
+```
+
 ## API Keys
 
 Set in environment:
 
 - `GOOGLE_API_KEY` — Gemini image generation
 - `XAI_API_KEY` — xAI Grok image/video generation
-- `TRIPO3D_API_KEY` — image-to-3D conversion
+- `TRIPO_API_KEY` — image-to-3D conversion via the `tripo` CLI (`npm install -g tripo-cli`, Node 20+)
 
 ## Verify Rendering
 
